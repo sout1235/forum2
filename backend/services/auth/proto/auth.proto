@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "backend/services/auth/proto";
+
+import "google/protobuf/timestamp.proto";
+
+service AuthService {
+  rpc VerifyToken(VerifyTokenRequest) returns (VerifyTokenResponse) {}
+  rpc GetUserByID(GetUserByIDRequest) returns (GetUserResponse) {}
+}
+
+message VerifyTokenRequest {
+  string token = 1;
+}
+
+message VerifyTokenResponse {
+  int64 user_id = 1;
+  string role = 2;
+  bool valid = 3;
+}
+
+message GetUserByIDRequest {
+  int64 user_id = 1;
+}
+
+message GetUserResponse {
+  int64 id = 1;
+  string username = 2;
+  string email = 3;
+  string role = 4;
+  string avatar = 5;
+}
+
+message User {
+  int64 id = 1;
+  string username = 2;
+  string email = 3;
+  string avatar = 4;
+  string role = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+} 
