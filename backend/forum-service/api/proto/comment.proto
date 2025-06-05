@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/sout1235/forum2/backend/forum-service/api/proto";
+
+import "google/protobuf/timestamp.proto";
+
+service CommentService {
+  rpc GetCommentsByTopic(GetCommentsByTopicRequest) returns (GetCommentsByTopicResponse);
+  rpc GetCommentByID(GetCommentByIDRequest) returns (GetCommentByIDResponse);
+  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+  rpc LikeComment(LikeCommentRequest) returns (LikeCommentResponse);
+}
+
+message Comment {
+  int64 id = 1;
+  string content = 2;
+  int64 author_id = 3;
+  int64 topic_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message GetCommentsByTopicRequest {
+  string topic_id = 1;
+}
+
+message GetCommentsByTopicResponse {
+  repeated Comment comments = 1;
+}
+
+message GetCommentByIDRequest {
+  string comment_id = 1;
+}
+
+message GetCommentByIDResponse {
+  Comment comment = 1;
+}
+
+message CreateCommentRequest {
+  string topic_id = 1;
+  string content = 2;
+  int64 author_id = 3;
+}
+
+message CreateCommentResponse {
+  Comment comment = 1;
+}
+
+message DeleteCommentRequest {
+  string topic_id = 1;
+  string comment_id = 2;
+  int64 user_id = 3;
+}
+
+message DeleteCommentResponse {}
+
+message LikeCommentRequest {
+  string comment_id = 1;
+}
+
+message LikeCommentResponse {} 

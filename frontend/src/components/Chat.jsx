@@ -12,7 +12,7 @@ const Chat = () => {
   };
 
   useEffect(() => {
-    ws.current = new WebSocket('ws://localhost:8080/ws/chat');
+    ws.current = new WebSocket('ws://localhost:8081/ws/chat');
 
     ws.current.onmessage = (event) => {
       const msg = JSON.parse(event.data);

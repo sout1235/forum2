@@ -1,80 +1,153 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import React, { useEffect } from 'react';
+import { List, Card, Button, Space, Tag, Spin, Popconfirm, message } from 'antd';
+import { EditOutlined, DeleteOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { Topic } from '../types/topic';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
-import { Topic } from '../types';
+import { topicApi } from '../api/topic';
+import { setTopics } from '../store/slices/topicsSlice';
 
-const TopicList: React.FC = () => {
-  const { topics, loading, error } = useSelector((state: RootState) => state.topics);
+interface TopicListProps {
+  topics?: Topic[];
+  onEdit?: (id: number) => void;
+  onDelete?: (id: number) => void;
+  onTopicsChange?: () => void;
+}
+
+export const TopicList: React.FC<TopicListProps> = ({ 
+  topics: propTopics, 
+  onEdit, 
+  onDelete,
+  onTopicsChange 
+}) => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user, isAdmin } = useAuth();
+  const { topics: storeTopics, loading } = useSelector((state: RootState) => state.topics);
+
+  const topics = propTopics || storeTopics || [];
+
+  // Загружаем темы при монтировании компонента
+  useEffect(() => {
+    if (!topics.length) {
+      fetchTopics();
+    }
+  }, []);
+
+  const fetchTopics = async () => {
+    try {
+      const response = await topicApi.getAllTopics();
+      dispatch(setTopics(response.data));
+    } catch (error) {
+      console.error('Ошибка при загрузке тем:', error);
+      message.error('Не удалось загрузить темы');
+    }
+  };
+
+  const handleEdit = (id: number) => {
+    if (onEdit) {
+      onEdit(id);
+    } else {
+      navigate(`/topics/${id}/edit`);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await topicApi.deleteTopic(id);
+      message.success('Тема успешно удалена');
+      
+      // Обновляем список тем
+      if (onTopicsChange) {
+        onTopicsChange();
+      } else {
+        const response = await topicApi.getAllTopics();
+        dispatch(setTopics(response.data));
+      }
+    } catch (error) {
+      console.error('Ошибка при удалении темы:', error);
+      message.error('Не удалось удалить тему');
+    }
+  };
+
+  const handleView = (id: number) => {
+    navigate(`/topics/${id}`);
+  };
+
+  const handleCreate = () => {
+    navigate('/topics/create');
+  };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center text-red-600 p-4">
-        {error}
+        <Spin size="large" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {topics.map((topic: Topic) => (
-        <div
-          key={topic.id}
-          className="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <Link
-                to={`/topics/${topic.id}`}
-                className="text-xl font-semibold text-gray-900 hover:text-indigo-600"
+    <div className="topic-list">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Темы</h2>
+        {user && (
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+          >
+            Создать тему
+          </Button>
+        )}
+      </div>
+
+      <List
+        grid={{ gutter: 16, column: 1 }}
+        dataSource={topics}
+        renderItem={(topic: Topic) => (
+          <List.Item
+            actions={[
+              <Button
+                key="view"
+                type="text"
+                icon={<EyeOutlined />}
+                onClick={() => handleView(topic.id)}
               >
-                {topic.title}
-              </Link>
-              <div className="mt-2 flex items-center text-sm text-gray-500">
-                <span className="flex items-center">
-                  <img
-                    className="h-5 w-5 rounded-full mr-2"
-                    src={topic.author.avatar || 'https://via.placeholder.com/40'}
-                    alt=""
-                  />
-                  {topic.author.username}
-                </span>
-                <span className="mx-2">•</span>
-                <span>{new Date(topic.createdAt).toLocaleDateString()}</span>
-                <span className="mx-2">•</span>
-                <span>{topic.views} просмотров</span>
-                <span className="mx-2">•</span>
-                <span>{topic.comments} комментариев</span>
+                Просмотр
+              </Button>
+            ]}
+          >
+            <Card
+              hoverable
+              onClick={() => handleView(topic.id)}
+              title={topic.title}
+              style={{ width: '100%' }}
+            >
+              <div className="topic-content">
+                <p className="whitespace-pre-wrap">{topic.content}</p>
+                <div className="topic-meta mt-4 text-gray-500">
+                  <span className="mr-4">Автор: {topic.author?.username || 'Unknown User'}</span>
+                  <span>Создано: {new Date(topic.created_at).toLocaleDateString()}</span>
+                </div>
+                <div className="topic-tags mt-2">
+                  {topic.tags?.map(tag => (
+                    <Tag key={tag.id} color="blue">
+                      {tag.name}
+                    </Tag>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="ml-4">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                {topic.category.name}
-              </span>
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {topic.tags.map((tag) => (
-              <span
-                key={tag.id}
-                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-              >
-                {tag.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
+            </Card>
+          </List.Item>
+        )}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showTotal: total => `Всего ${total} тем`,
+        }}
+      />
     </div>
   );
-};
-
-export default TopicList; 
+}; 

@@ -1,139 +1,122 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
-import { addComment } from '../store/slices/commentsSlice';
-import { Comment } from '../types';
+import React, { useState } from 'react';
+import { List, Button, Input, message, Popconfirm } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
+import { useAuth } from '../hooks/useAuth';
+import { Comment } from '../types/topic';
+import { topicApi } from '../api/topic';
+
+const { TextArea } = Input;
 
 interface CommentListProps {
   topicId: number;
+  comments: Comment[];
+  onCommentsChange: () => void;
 }
 
-const CommentList: React.FC<CommentListProps> = ({ topicId }) => {
-  const dispatch = useDispatch();
-  const { comments, loading, error } = useSelector((state: RootState) => state.comments);
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
-  const [content, setContent] = useState('');
-  const [commentError, setCommentError] = useState('');
+export const CommentList: React.FC<CommentListProps> = ({
+  topicId,
+  comments,
+  onCommentsChange,
+}) => {
+  const { user, isAdmin } = useAuth();
+  const [newComment, setNewComment] = useState('');
 
-  useEffect(() => {
-    const fetchComments = async () => {
-      try {
-        const response = await fetch(`http://localhost:8080/api/topics/${topicId}/comments`);
-        const data = await response.json();
-        dispatch({ type: 'comments/setComments', payload: data });
-      } catch (error) {
-        console.error('Error fetching comments:', error);
-      }
-    };
-
-    fetchComments();
-  }, [dispatch, topicId]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCommentError('');
-
-    if (!content.trim()) {
-      setCommentError('Комментарий не может быть пустым');
+  const handleAddComment = async () => {
+    if (!newComment.trim()) {
+      message.warning('Комментарий не может быть пустым');
       return;
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/topics/${topicId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content }),
+      await topicApi.createComment(topicId, {
+        content: newComment
       });
-
-      if (!response.ok) {
-        throw new Error('Ошибка при создании комментария');
-      }
-
-      const data = await response.json();
-      dispatch(addComment(data as Comment));
-      setContent('');
+      setNewComment('');
+      onCommentsChange();
+      message.success('Комментарий добавлен');
     } catch (error) {
-      setCommentError('Ошибка при создании комментария');
+      console.error('Ошибка при добавлении комментария:', error);
+      message.error('Не удалось добавить комментарий');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-32">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center text-red-600 p-4">
-        {error}
-      </div>
-    );
-  }
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      await topicApi.deleteComment(topicId, commentId);
+      onCommentsChange();
+      message.success('Комментарий удален');
+    } catch (error) {
+      console.error('Ошибка при удалении комментария:', error);
+      message.error('Не удалось удалить комментарий');
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      {isAuthenticated && (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {commentError && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
-              {commentError}
-            </div>
-          )}
-          <div>
-            <label htmlFor="comment" className="sr-only">
-              Ваш комментарий
-            </label>
-            <textarea
-              id="comment"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={3}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              placeholder="Написать комментарий..."
-            />
-          </div>
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Отправить
-            </button>
-          </div>
-        </form>
+    <div className="comment-list">
+      {user ? (
+        <div className="mb-4">
+          <TextArea
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Написать комментарий..."
+            rows={4}
+            className="mb-2"
+          />
+          <Button type="primary" onClick={handleAddComment}>
+            Отправить
+          </Button>
+        </div>
+      ) : (
+        <p className="text-gray-500 mb-4">
+          Войдите в систему, чтобы оставить комментарий
+        </p>
       )}
 
-      <div className="space-y-4">
-        {comments.map((comment) => (
-          <div key={comment.id} className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <img
-                className="h-8 w-8 rounded-full"
-                src={comment.author.avatar || 'https://via.placeholder.com/40'}
-                alt=""
+      <List
+        dataSource={comments}
+        renderItem={(comment) => {
+          const canDeleteComment = user && (isAdmin || user.id === comment.author_id);
+
+          return (
+            <List.Item
+              actions={
+                canDeleteComment ? [
+                  <Popconfirm
+                    key="delete"
+                    title="Удалить комментарий?"
+                    description="Вы уверены, что хотите удалить этот комментарий?"
+                    onConfirm={() => handleDeleteComment(comment.id)}
+                    okText="Да"
+                    cancelText="Нет"
+                  >
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                    >
+                      Удалить
+                    </Button>
+                  </Popconfirm>
+                ] : []
+              }
+            >
+              <List.Item.Meta
+                title={
+                  <div className="flex items-center">
+                    <span className="font-medium">{comment.author.username}</span>
+                    <span className="text-gray-500 text-sm ml-2">
+                      {new Date(comment.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                }
+                description={
+                  <div className="whitespace-pre-wrap">{comment.content}</div>
+                }
               />
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  {comment.author.username}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {new Date(comment.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-            <div className="mt-2 text-sm text-gray-700">
-              {comment.content}
-            </div>
-          </div>
-        ))}
-      </div>
+            </List.Item>
+          );
+        }}
+      />
     </div>
   );
-};
-
-export default CommentList; 
+}; 

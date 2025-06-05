@@ -1,81 +1,143 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
-import CommentList from './CommentList';
-import { Topic } from '../types';
+import React, { useEffect, useState } from 'react';
+import { Card, Typography, Spin, message, Button, Space, Popconfirm } from 'antd';
+import { useParams, useNavigate } from 'react-router-dom';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { topicApi } from '../api/topic';
+import { Topic, Comment } from '../types/topic';
+import { CommentList } from './CommentList';
+import { useAuth } from '../hooks/useAuth';
+
+const { Title, Paragraph } = Typography;
 
 const TopicDetail: React.FC = () => {
-  const { currentTopic, loading, error } = useSelector((state: RootState) => state.topics);
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user, isAdmin } = useAuth();
+  const [currentTopic, setCurrentTopic] = useState<Topic | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchTopic();
+  }, [id]);
+
+  const fetchTopic = async () => {
+    try {
+      setLoading(true);
+      const response = await topicApi.getTopic(Number(id));
+      setCurrentTopic(response.data);
+      setComments(response.data.comments || []);
+      
+      // Добавляем логирование после загрузки темы
+      console.log('Topic loaded:', response.data);
+      console.log('Current user:', user);
+      console.log('Is admin:', isAdmin);
+      if (user && response.data) {
+        console.log('User ID:', user.id, 'Type:', typeof user.id);
+        console.log('Author ID:', response.data.author_id, 'Type:', typeof response.data.author_id);
+        console.log('ID comparison:', String(user.id) === String(response.data.author_id));
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке темы:', error);
+      message.error('Не удалось загрузить тему');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCommentsChange = () => {
+    fetchTopic();
+  };
+
+  const handleEdit = () => {
+    navigate(`/topics/${id}/edit`);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await topicApi.deleteTopic(Number(id));
+      message.success('Тема успешно удалена');
+      navigate('/');
+    } catch (error) {
+      console.error('Ошибка при удалении темы:', error);
+      message.error('Не удалось удалить тему');
+    }
+  };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center text-red-600 p-4">
-        {error}
+        <Spin size="large" />
       </div>
     );
   }
 
   if (!currentTopic) {
-    return (
-      <div className="text-center text-gray-600 p-4">
-        Тема не найдена
-      </div>
-    );
+    return <div className="text-center p-4">Тема не найдена</div>;
   }
 
+  // Проверяем, является ли пользователь автором темы или администратором
+  const canEditTopic = user && (isAdmin || String(user.id) === String(currentTopic.author_id));
+  
+  // Добавляем логирование перед рендерингом
+  console.log('Render check:');
+  console.log('User:', user);
+  console.log('Is admin:', isAdmin);
+  console.log('Topic author ID:', currentTopic.author_id);
+  console.log('Can edit topic:', canEditTopic);
+
   return (
-    <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">{currentTopic.title}</h1>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-            {currentTopic.category.name}
-          </span>
+    <div className="container mx-auto px-4 py-8">
+      <Card
+        title={
+          <div className="flex justify-between items-center">
+            <Title level={2} style={{ margin: 0 }}>{currentTopic.title}</Title>
+            {canEditTopic && (
+              <Space>
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  onClick={handleEdit}
+                >
+                  Редактировать
+                </Button>
+                <Popconfirm
+                  title="Удалить тему?"
+                  description="Вы уверены, что хотите удалить эту тему?"
+                  onConfirm={handleDelete}
+                  okText="Да"
+                  cancelText="Нет"
+                >
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                  >
+                    Удалить
+                  </Button>
+                </Popconfirm>
+              </Space>
+            )}
         </div>
-        
-        <div className="mt-4 flex items-center text-sm text-gray-500">
-          <span className="flex items-center">
-            <img
-              className="h-8 w-8 rounded-full mr-2"
-              src={currentTopic.author.avatar || 'https://via.placeholder.com/40'}
-              alt=""
-            />
-            {currentTopic.author.username}
-          </span>
-          <span className="mx-2">•</span>
-          <span>{new Date(currentTopic.createdAt).toLocaleDateString()}</span>
-          <span className="mx-2">•</span>
-          <span>{currentTopic.views} просмотров</span>
+        }
+      >
+        <Paragraph className="whitespace-pre-wrap">{currentTopic.content}</Paragraph>
+        <div className="mt-4 text-gray-500">
+          <span className="mr-4">Автор: {currentTopic.author?.username || 'Unknown User'}</span>
+          <span className="mr-4">Создано: {new Date(currentTopic.created_at).toLocaleDateString()}</span>
+          <span className="mr-4">Комментарии: {currentTopic.comment_count}</span>
+          <span>Просмотры: {currentTopic.views}</span>
         </div>
+      </Card>
 
-        <div className="mt-6 prose max-w-none">
-          {currentTopic.content}
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-2">
-          {currentTopic.tags.map((tag) => (
-            <span
-              key={tag.id}
-              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-            >
-              {tag.name}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Комментарии</h2>
-        <CommentList topicId={currentTopic.id} />
-      </div>
+      <Card className="mt-4">
+        <Title level={3}>Комментарии ({currentTopic.comment_count})</Title>
+        <CommentList 
+          topicId={currentTopic.id} 
+          comments={comments}
+          onCommentsChange={handleCommentsChange}
+        />
+      </Card>
     </div>
   );
 };

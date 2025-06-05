@@ -1,0 +1,581 @@
+basePath: /api/v1
+definitions:
+  entity.Comment:
+    properties:
+      author:
+        $ref: '#/definitions/entity.User'
+      author_id:
+        type: integer
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      likes:
+        type: integer
+      parent_id:
+        type: integer
+      topic_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  entity.Topic:
+    properties:
+      author:
+        $ref: '#/definitions/entity.User'
+      author_id:
+        type: integer
+      category_id:
+        type: integer
+      comment_count:
+        type: integer
+      comments:
+        items:
+          $ref: '#/definitions/entity.Comment'
+        type: array
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+      views:
+        type: integer
+    type: object
+  entity.User:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: integer
+      username:
+        type: string
+    type: object
+  httpDelivery.Author:
+    description: Author information
+    properties:
+      avatar:
+        example: https://example.com/avatar.jpg
+        type: string
+      id:
+        example: 1
+        type: integer
+      username:
+        example: johndoe
+        type: string
+    type: object
+  httpDelivery.Category:
+    description: Category information
+    properties:
+      id:
+        example: 1
+        type: integer
+      name:
+        example: General
+        type: string
+    type: object
+  httpDelivery.Comment:
+    description: Comment information
+    properties:
+      author:
+        $ref: '#/definitions/httpDelivery.Author'
+      author_id:
+        example: 1
+        type: integer
+      content:
+        example: Great post!
+        type: string
+      created_at:
+        example: "2024-03-15T10:00:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      topic_id:
+        example: 1
+        type: integer
+      updated_at:
+        example: "2024-03-15T10:00:00Z"
+        type: string
+    type: object
+  httpDelivery.CommentRequest:
+    description: Request body for creating a comment
+    properties:
+      content:
+        example: This is a great post!
+        type: string
+    required:
+    - content
+    type: object
+  httpDelivery.ErrorResponse:
+    description: Error response containing error message
+    properties:
+      error:
+        example: Error message
+        type: string
+    type: object
+  httpDelivery.SuccessResponse:
+    description: Success response containing message
+    properties:
+      message:
+        example: Operation successful
+        type: string
+    type: object
+  httpDelivery.Tag:
+    description: Tag information
+    properties:
+      id:
+        example: 1
+        type: integer
+      name:
+        example: golang
+        type: string
+    type: object
+  httpDelivery.TopicResponse:
+    description: Topic information with comments and metadata
+    properties:
+      author:
+        $ref: '#/definitions/httpDelivery.Author'
+      author_id:
+        example: 1
+        type: integer
+      category:
+        $ref: '#/definitions/httpDelivery.Category'
+      category_id:
+        example: 1
+        type: integer
+      comment_count:
+        example: 5
+        type: integer
+      comments:
+        items:
+          $ref: '#/definitions/httpDelivery.Comment'
+        type: array
+      content:
+        example: This is a tutorial about Go programming language
+        type: string
+      created_at:
+        example: "2024-03-15T10:00:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      tags:
+        items:
+          $ref: '#/definitions/httpDelivery.Tag'
+        type: array
+      title:
+        example: How to use Go
+        type: string
+      updated_at:
+        example: "2024-03-15T10:00:00Z"
+        type: string
+      views:
+        example: 100
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: API for forum service with topics, comments and chat functionality
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Forum Service API
+  version: "1.0"
+paths:
+  /comments/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific comment
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpDelivery.Comment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+      summary: Get a specific comment
+      tags:
+      - comments
+  /comments/{id}/like:
+    post:
+      consumes:
+      - application/json
+      description: Add a like to a specific comment
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+      summary: Like a comment
+      tags:
+      - comments
+  /topics:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all topics with pagination
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/httpDelivery.TopicResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+      summary: Get all topics
+      tags:
+      - topics
+    post:
+      consumes:
+      - application/json
+      description: Create a new topic with the provided information
+      parameters:
+      - description: Topic information
+        in: body
+        name: topic
+        required: true
+        schema:
+          $ref: '#/definitions/entity.Topic'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/httpDelivery.TopicResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new topic
+      tags:
+      - topics
+  /topics/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a topic by ID
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpDelivery.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a topic
+      tags:
+      - topics
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific topic
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpDelivery.TopicResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+      summary: Get a topic by ID
+      tags:
+      - topics
+    put:
+      consumes:
+      - application/json
+      description: Update an existing topic's information
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated topic information
+        in: body
+        name: topic
+        required: true
+        schema:
+          $ref: '#/definitions/entity.Topic'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpDelivery.TopicResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a topic
+      tags:
+      - topics
+  /topics/{id}/comments:
+    get:
+      consumes:
+      - application/json
+      description: Get all comments associated with a specific topic
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/httpDelivery.Comment'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+      summary: Get all comments for a topic
+      tags:
+      - comments
+    post:
+      consumes:
+      - application/json
+      description: Create a new comment on a topic
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Comment information
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/httpDelivery.CommentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/httpDelivery.Comment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new comment
+      tags:
+      - comments
+  /topics/{id}/comments/{commentId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific comment
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Comment ID
+        in: path
+        name: commentId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpDelivery.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a comment
+      tags:
+      - comments
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

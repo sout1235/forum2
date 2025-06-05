@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package chat;
+
+option go_package = "github.com/sout1235/forum2/backend/proto/chat";
+
+service ChatService {
+  rpc SaveMessage(SaveMessageRequest) returns (SaveMessageResponse) {}
+  rpc GetRecentMessages(GetRecentMessagesRequest) returns (GetRecentMessagesResponse) {}
+  rpc StreamMessages(StreamMessagesRequest) returns (stream ChatMessage) {}
+}
+
+message SaveMessageRequest {
+  string content = 1;
+  string author_id = 2;
+  string author_username = 3;
+}
+
+message SaveMessageResponse {
+  bool success = 1;
+  string message_id = 2;
+}
+
+message GetRecentMessagesRequest {
+  int32 limit = 1;
+}
+
+message GetRecentMessagesResponse {
+  repeated ChatMessage messages = 1;
+}
+
+message StreamMessagesRequest {
+  string user_id = 1;
+}
+
+message ChatMessage {
+  string message_id = 1;
+  string content = 2;
+  string author_id = 3;
+  string author_username = 4;
+  string created_at = 5;
+  string expires_at = 6;
+} 
